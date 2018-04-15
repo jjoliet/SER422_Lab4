@@ -18,11 +18,13 @@
   <!-- Compiles your java files and puts the classes in classes.dir -->
   <target name="compile" depends="init">
     <javac
+      target="1.8"
       srcdir="${src.dir}"
       destdir="${classes.dir}">
       <!-- Make sure you set your classpath! -->
       <classpath>
         <fileset dir="${tomcat.home}/lib" includes="servlet-api.jar"/>
+      	<fileset dir="${web.dir}" includes="*.jar"/>
         <pathelement path="${classes.dir}" />
       </classpath>
     </javac>
@@ -50,7 +52,11 @@
     <copy todir="${build.home}/WEB-INF">
       <fileset dir="." includes="${classes.dir}/**" excludes="${classes.dir}/driver/**"/>
     </copy>
+  	<copy todir="${build.home}/WEB-INF">
+  	    <fileset dir="." includes="${lib.dir}/**" excludes="${classes.dir}/driver/**"/>
+  	 </copy>
     <copy file="web.xml" tofile="${build.home}/WEB-INF/web.xml"/>
+  	<copy file="index.html" tofile="${build.home}/index.html"/>
   </target>
 
   <!-- Clean -->
