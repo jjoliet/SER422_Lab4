@@ -2,6 +2,8 @@ package org.tempuri;
 
 import java.io.IOException;
 import java.rmi.RemoteException;
+import java.util.ArrayList;
+
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -26,63 +28,61 @@ public class WeatherClient extends HttpServlet {
 		String contentType = "text/html";
 		response.setContentType(contentType);
 		response.setStatus(HttpServletResponse.SC_OK);
-		response.getWriter().print(client.getWeather("Denver", "Colorado"));
+		processRequest(request,response);
+		request.getRequestDispatcher("./index.jsp");
 	}
 	public void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		//Using for verification currently.
-//		System.out.println(request.getParameter("state_names_for_weather"));
-//		System.out.println(request.getParameter("city_name_weather"));
-//		System.out.println(request.getParameter("hourly_check"));
-//		System.out.println(request.getParameter("Ten_day_check"));
-		String contentType = "text/html";
-		response.setContentType(contentType);
 		response.setStatus(HttpServletResponse.SC_OK);
-		//response.getWriter().print(client.getWeather_hourly("Denver", "Colorado", true));
-		String temp = client.getWeather_tenDays("Denver", "Colorado", true);
-		System.out.println("ok so far");
-		JsonParser parser = new JsonParser();
-		//JsonObject obj = parser.parse(temp).getAsJsonObject().get("current_observation").getAsJsonObject();
-		//System.out.println("Ok still... " + obj.get("weather")); Works for getting initial objects
-		
-//		JsonObject obj = parser.parse(temp).getAsJsonObject();
-//		JsonArray arr = obj.get("hourly_forecast").getAsJsonArray();
-//		System.out.println("Here you go " + arr.get(0).getAsJsonObject().get("FCTTIME").getAsJsonObject().get("pretty"));
-		
-		JsonObject obj = parser.parse(temp).getAsJsonObject().get("forecast").getAsJsonObject().get("simpleforecast").getAsJsonObject();
-		JsonArray arr = obj.get("forecastday").getAsJsonArray();
-		System.out.println("Here you go " + arr.get(0).getAsJsonObject());
-		
-		response.getWriter().print(temp);
+		processRequest(request, response);
+		request.getRequestDispatcher(response.encodeURL("./index.jsp")).forward(request, response);
+
 	}
 	
 	public void processRequest(HttpServletRequest request, HttpServletResponse response) {
 		//Process request Parameters
-		boolean hourly = request.getParameter("hourly_check").equalsIgnoreCase("on") ? true : false;
-		boolean tenDay = request.getParameter("Ten_day_check").equalsIgnoreCase("on") ? true : false;
+		String hourly = request.getParameter("hourly_check");
+		String tenDay = request.getParameter("Ten_day_check");
 		String city_name = request.getParameter("city_name_weather");
 		String state_name = request.getParameter("state_names_for_weather");
 		String json_String ="";
+		ArrayList<Weather> al = new ArrayList<Weather>();
 		JsonParser parser = new JsonParser();
 		//Determine which function to call. Defaults to "tenDay" if both hourly and ten day forecast are checked.
 		try {
-			if(tenDay) {
-				json_String = client.getWeather_tenDays(city_name, state_name, tenDay);				
+			if(tenDay!= null) {
+				json_String = client.getWeather_tenDays(city_name, state_name, true);		
 				JsonArray obj = parser.parse(json_String).getAsJsonObject().get("forecast").getAsJsonObject().get("simpleforecast").getAsJsonObject().get("forecastday").getAsJsonArray();
 				for(JsonElement el: obj) {
-					
+					JsonObject temp = el.getAsJsonObject();
+					String temp2 = temp.get("high").getAsJsonObject().get("fahrenheit") +" " + temp.get("high").getAsJsonObject().get("celsius");
+					String temp3 = temp.get("low").getAsJsonObject().get("fahrenheit") +" " + temp.get("low").getAsJsonObject().get("celsius");
+					al.add(new Weather("tenDay", temp.get("date").getAsJsonObject().get("weekday_short").getAsString(), temp.get("icon_url").getAsString(), temp2, temp3, temp.get("icon").getAsString()));
+				
 				}
-			}else if(hourly) {
-				json_String = client.getWeather_hourly(city_name, state_name, hourly);
+			}else if(hourly!=null) {
+				json_String = client.getWeather_hourly(city_name, state_name, true);
+				JsonArray obj = parser.parse(json_String).getAsJsonObject().get("hourly_forecast").getAsJsonArray();
+				for(JsonElement el: obj) {
+					JsonObject temp = el.getAsJsonObject();
+					String temp_string = temp.get("temp").getAsJsonObject().get("english") + " " + temp.get("temp").getAsJsonObject().get("metric");
+					String feel_string = temp.get("feelslike").getAsJsonObject().get("english") + " " + temp.get("feelslike").getAsJsonObject().get("metric");
+					al.add(new Weather("hourly", temp.get("FCTTIME").getAsJsonObject().get("pretty").getAsString(), temp.get("icon_url").getAsString(), temp_string, feel_string, temp.get("humidity").getAsString(), temp.get("wx").getAsString()));
+				}
 			}
 			else {
 				json_String = client.getWeather(city_name, state_name);
+				JsonObject obj = parser.parse(json_String).getAsJsonObject().get("current_observation").getAsJsonObject();
+				al.add(new Weather("current", obj.get("observation_time").getAsString(), obj.get("weather").getAsString(), obj.get("temperature_string").getAsString(), obj.get("feelslike_string").getAsString(), obj.get("relative_humidity").getAsString(), obj.get("wind_string").getAsString(), obj.get("wind_dir").getAsString()));
 			}
 		} catch (Exception e) {
 			//Bad handling, but for now, what I will have.
 			e.printStackTrace();
 		}
 		
-		
+		Weather[] list = al.toArray(new Weather[al.size()]);
+		request.setAttribute("list", list);		
 	}
+
 
 }

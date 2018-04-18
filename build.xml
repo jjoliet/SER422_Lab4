@@ -56,7 +56,7 @@
   	    <fileset dir="." includes="${lib.dir}/**" excludes="${classes.dir}/driver/**"/>
   	 </copy>
     <copy file="web.xml" tofile="${build.home}/WEB-INF/web.xml"/>
-  	<copy file="index.html" tofile="${build.home}/index.html"/>
+  	<copy file="index.jsp" tofile="${build.home}/index.jsp"/>
   </target>
 
   <!-- Clean -->
